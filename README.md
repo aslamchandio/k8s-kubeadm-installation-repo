@@ -92,7 +92,6 @@ systemctl status containerd
 ```
 ### References
 - https://github.com/containerd/containerd/blob/main/docs/getting-started.md
-- https://github.com/containerd/containerd/blob/main/docs/getting-started.md
 
 ### Install Runc
 
@@ -295,6 +294,9 @@ Then you can join any number of worker nodes by running the following on each as
                       
 ```
 
+### References
+- https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+
 ### Installing "Calico CNI" or "Weave CNI" (Pod-Network add-on):
 
 #### Calico CNI
@@ -414,10 +416,6 @@ k get pods -A
 k get all -n kube-system
 
 ```
-
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/1-Argo1.jpg)
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/2-Argo2.jpg)
-
 
 
 
