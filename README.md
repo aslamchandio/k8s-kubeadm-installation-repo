@@ -41,7 +41,7 @@ TCP	Inbound	30000-32767	NodePort Services†	All
 
 
 ### Run the below steps on the Master Node
-- Update Ubuntu
+- Debian-based distributions
 ```
 sudo apt update -y
 sudo apt upgrade -y
@@ -53,7 +53,7 @@ printf "\n192.168.1.10  master01\n192.168.3.11  worker01\n192.168.5.12  worker02
 
 ```
 ### Run the below steps on the Worker Nodes 
-- Update Ubuntu
+- Debian-based distributions
 ```
 sudo apt update -y
 sudo apt upgrade -y
@@ -72,7 +72,6 @@ printf "\n192.168.1.10  master01\n192.168.3.11  worker01\n192.168.5.12  worker02
 ### Install Containerd
 
 ```
-
 wget https://github.com/containerd/containerd/releases/download/v1.7.20/containerd-1.7.20-linux-amd64.tar.gz
 sudo tar Cxzvf /usr/local containerd-1.7.20-linux-amd64.tar.gz
 
@@ -93,7 +92,6 @@ systemctl status containerd
 ```
 wget https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64  -P /tmp/
 sudo install -m 755 /tmp/runc.amd64 /usr/local/sbin/runc
-
 ```
 ### Install CNI
 ```
@@ -102,8 +100,10 @@ sudo mkdir -p /opt/cni/bin
 sudo tar Cxzvf /opt/cni/bin /tmp/cni-plugins-linux-amd64-v1.5.0.tgz
 
 sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml   (Note : manually edit and change systemdCgroup to true)
+containerd config default | sudo tee /etc/containerd/config.toml   
 cat /etc/containerd/config.toml
+
+Notice  SystemdCgroup = false 
 
 ```
 
@@ -113,6 +113,8 @@ Both the container runtime and the kubelet have a property called "cgroup driver
 
 Warning:
 Matching the container runtime and kubelet cgroup drivers is required or otherwise the kubelet process will fail.
+
+SystemdCgroup = false   change to    SystemdCgroup = true
 
 - automatic process
 
@@ -254,286 +256,155 @@ sudo systemctl enable --now kubelet
 
 sudo kubeadm init --pod-network-cidr "10.244.0.0/16" --service-cidr "10.32.0.0/16" --apiserver-advertise-address=192.168.5.10
 
-```
-
-### Note 
+## Note
 
 apiserver Ip means Master Node Private IP : 192.168.5.10
 Pod Network Cidr                          : 10.244.0.0/16
 Service Network Cidr                          : 10.32.0.0/16
 
-## ArgoCD installation 
-
-Install ArgoCD in your Kubernetes cluster following this link - https://argo-cd.readthedocs.io/en/stable/getting_started/
-
-### Requirements
-
-- Installed kubectl command-line tool.
-- Have a kubeconfig file (default location is ~/.kube/config).
-  CoreDNS. Can be enabled for microk8s by microk8s enable dns && microk8s stop && microk8s start
- 
-### Step-01:
-- Install Argo CD on K8S
 ```
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-This will create a new namespace, argocd, where Argo CD services and application resources will live.
+### Output of above command 
 
 ```
 
-### Access The Argo CD API Server
-- Service Type Load Balancer
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+Alternatively, if you are the root user, you can run:
+
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+                      
 ```
 
-Change the argocd-server service type to LoadBalancer:
+### Installing "Calico CNI" or "Weave CNI" (Pod-Network add-on):
+- Calico CNI
+- For Cloud Only (Open TCP/179 BGP Port on controlplane-SG and worker-SG) 
 
-kubectl patch svc argocd-server -n argocd -p '{"spec": {"type": "LoadBalancer"}}'
+```
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/calico.yaml -O
+
+kubectl apply -f calico.yaml
+kubectl get pods -A
 
 ```
 
-- Port Forwarding:
+### References
+
+- https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises#install-calico-with-kubernetes-api-datastore-50-nodes-or-less
+
+
+- Weave CNI
+- 6783/tcp,6784/udp for Weavenet CNI open these ports  only on Cloud Provider SG & Firewalls
+
 ```
 
-Kubectl port-forwarding can also be used to connect to the API server without exposing the service.
+kubectl apply -f https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
 
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+wget https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml -O weave.yaml 
+
+wget https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s.yaml
+
+/home/weave/launch.sh
+
+also search 6784
+
+DaemonSet
+
+- --ipalloc-range=10.244.0.0/16
+
+kubectl apply -f weave-daemonset-k8s.yaml
+
+kubectl get pods -A
 
 ```
 
-### Step-02:
-- ArgoCD install on Linux
+### References
+
+- https://www.weave.works/docs/net/latest/kubernetes/kube-addon/
+- https://www.weave.works/docs/net/latest/tasks/ipam/configuring-weave/
+
+
+### Join worker Nodes (run only on worker nodes)
+
+```
+kubeadm join 192.168.5.10:6443 --token toeu11.54j1jcg3xz4e69iy \
+        --discovery-token-ca-cert-hash sha256:392b358bc5ce90dd259b8cdda6679fe689b2d2013072d46d8a24d2fa231ccfd9
 ```
 
-curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-rm argocd-linux-amd64
+### Create New Token (run only on master node)
 
-argocd admin initial-password -n argocd
+```
+kubeadm token create --print-join-command 
 
-This password must be only used for first time login. We strongly recommend you update the password using `argocd account update-password`.
+```
 
-argocd admin initial-password -n argocd
+## Install Kubecolor
+
+```
+sudo wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubecolor_0.0.25_Linux_x86_64.tar.gz
+
+  sudo tar zxv -f kubecolor_0.0.25_Linux_x86_64.tar.gz
+
+ ./kubecolor get pods
+  ./kubecolor get pods -A
+  ./kubecolor get nodes
+  ./kubecolor get nodes -o wide
+  ./kubecolor get all
+  ./kubecolor get all -n kube-system
+  ./kubecolor
+
+alias k=/home/ubuntu/
+alias k=/home/ubuntu/kubecolor
+
+```
+
+### References
+
+- https://github.com/hidetatz/kubecolor 
+
+
+## Deployments 
+
+```
+k create deployment first-deployment --image aslam24/nginx-web-makaan:v1 
+
+k expose deployment first-deployment --type NodePort --port=80  --name first-deployment-np-service
+
+k scale  deployment first-deployment --replicas 2
+
+k get pods
+k get service
+k get pods -A
+k get all -n kube-system
 
 ```
 
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/1-Argo1.jpg)
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/2-Argo2.jpg)
 
-# Configurations on Jenkins
 
-## Create a First PipeLine on Jenkins
-
-### Step-01: 
-- Pipeline
-```
-Definition : Pipeline Script from SCM
-SCM : Git
-
-Repository URL : https://github.com/aslamchandio/project-app.git
-
-Branch Specifier : Change */master to   */main
-
-
-```
-
-- First Repo : (Dockerfile,Jenkinsfile & app)
-
-### References
-- https://github.com/aslamchandio/project-app.git
-
-
-### Dockerfile
-```
-FROM nginx
-COPY  app  /usr/share/nginx/html
-
-```
-### app folder
-- app (any code in app folder)
-```
-
-```
-
-### Jenkinsfile
-- Code
-```
-node {
-    def app
-
-    stage('Clone repository') {
-      
-
-        checkout scm
-    }
-
-    stage('Build image') {
-  
-       app = docker.build("aslam24/project-app")                  # Change Repo File
-    }
-
-    stage('Test image') {
-  
-
-        app.inside {
-            sh 'echo "Tests passed"'
-        }
-    }
-
-    stage('Push image') {
-        
-        docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
-            app.push("${env.BUILD_NUMBER}")
-        }
-    }
-    
-    stage('Trigger ManifestUpdate') {
-                echo "triggering updatemanifestjob"
-                build job: 'updatemanifest', parameters: [string(name: 'DOCKERTAG', value: env.BUILD_NUMBER)]
-        }
-}
-
-```
-
-## Create a Second PipeLine on Jenkins
-
-### Step-01: 
-- Pipeline
-```
-
-Name : updatemanifest > Pipeline
-
-This project is parameterized    add parameter as string
-
-Name: DOCKERTAG
-Default Value: latest
-
-Pipeline
-
-
-Repository URL : https://github.com/aslamchandio/kubernetesmanifest.git
-
-Branch Specifier : Change */master to   */main
-
-Definition : Pipeline Script from SCM
-SCM : Git
-
-```
-
-- Second Repo : (Jenkinsfile & deployment.yaml)
-
-### References
-- https://github.com/aslamchandio/kubernetesmanifest.git
-
-
-### Jenkinsfile
-- Code
-```
-node {
-    def app
-
-    stage('Clone repository') {
-      
-
-        checkout scm
-    }
-
-    stage('Update GIT') {
-            script {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    withCredentials([usernamePassword(credentialsId: 'github', passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        //def encodedPassword = URLEncoder.encode("$GIT_PASSWORD",'UTF-8')
-                        sh "git config user.email aslam.chandio03@gmail.com"
-                        sh "git config user.name Aslam Chandio"
-                        //sh "git switch master"
-                        sh "cat deployment.yaml"
-                        sh "sed -i 's+aslam24/project-repo.*+aslam24/project-repo:${DOCKERTAG}+g' deployment.yaml"
-                        sh "cat deployment.yaml"
-                        sh "git add ."
-                        sh "git commit -m 'Done by Jenkins Job changemanifest: ${env.BUILD_NUMBER}'"
-                        sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${GIT_USERNAME}/kubernetesmanifest.git HEAD:main"
-      }
-    }
-  }
-}
-}
-
-
-```
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/3-Jenkins1.jpg)
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/4-Jenkins2.jpg)
 
-### deployment.yaml
-- Code - Deployment & LoadBalancer Service  Manifest
-```
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: firt-deployment
-  labels:
-    app:  first-deployment
-
-spec:  
-  replicas: 3
-  selector:
-    matchLabels:
-      app: first-deployment
-      
-  template:
-    metadata:
-      name: first-deployment
-      labels:
-        app: first-deployment
-    spec:
-      containers:
-        - name: first-deployment
-          image: aslam24/project-app:latest
-          ports:
-            - containerPort: 80
-                        
-
-apiVersion: v1 
-kind: Service
-metadata: 
-  name: deployment-lb-service
-  labels:
-    app: deployment-lb-service
-
-spec:
-  type: LoadBalancer
-  selector:
-    app: first-deployment
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
-
-```
-
-##  Automatic WebHook  
-- on Github
-...
-
-aslamchandio /project-app   (repo on Github)
-
-setting > Webhooks 
-
-Payload URL : http://18.77.11.12:8080/github-webhook/  or  http://jenkins.chandiolab.site:8080/github-webhook/
-
-Content type : application/json
-
-Which events would you like to trigger this webhook? : just the push event.
-
-active 
 
 
-## Automatic WebHook
-- on Jenkins
-...
 
-buildimage > pipeline > Build Triggers  >  GitHub hook trigger for GITScm polling ( check it)
 
-...
+
+
 
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/7-web-hook.jpg)
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/8-web-hook-jenkin.jpg)
