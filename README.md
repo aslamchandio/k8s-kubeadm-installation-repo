@@ -1,7 +1,7 @@
 # Setup a Multi Node Kubernetes Cluster Using Kubeadm
 
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/kubeadm1.jpg)
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/kubeadm2.jpg)
+
 
 ## What this does?
 Using kubeadm, you can create a minimum viable Kubernetes cluster that conforms to best practices. In fact, you can use kubeadm to set up a cluster that will pass the Kubernetes Conformance tests. kubeadm also supports other cluster lifecycle functions, such as bootstrap tokens and cluster upgrades.
@@ -16,6 +16,8 @@ A building block in other ecosystem and/or installer tools with a larger scope.
 - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
 
 ## If you are using AWS EC2 , you need to allow specific traffic on specific ports as below
+
+![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/Instances.jpg)
 
 ### ControlPLan Security Group
 ```
@@ -54,7 +56,7 @@ sudo apt autoclean -y
 sudo hostnamectl set-hostname master01
 sudo apt install zip unzip git nano vim wget net-tools vim nano htop tree  -y
 
-printf "\n192.168.1.10  master01\n192.168.3.11  worker01\n192.168.5.12  worker02\n\n" >> /etc/hosts
+printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
 
 ```
 ### Run the below steps on the Worker Nodes 
@@ -68,7 +70,7 @@ sudo hostnamectl set-hostname worker01
 sudo hostnamectl set-hostname worker02
 sudo apt install zip unzip git nano vim wget net-tools vim nano htop tree  -y
 
-printf "\n192.168.1.10  master01\n192.168.3.11  worker01\n192.168.5.12  worker02\n\n" >> /etc/hosts
+printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
 
 ```
 
@@ -417,8 +419,6 @@ k get all -n kube-system
 ![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/2-Argo2.jpg)
 
 
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/3-Jenkins1.jpg)
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/4-Jenkins2.jpg)
 
 
 
@@ -427,17 +427,6 @@ k get all -n kube-system
 
 
 
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/7-web-hook.jpg)
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/8-web-hook-jenkin.jpg)
-
-## Kubernetes Cluster Configurations
-
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/5-K8S-1.jpg)
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/6-K8S-2.jpg)
-
-## App Access from domain name
-
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/9-App-1.jpg)
 
 
 
