@@ -49,7 +49,7 @@ sudo apt autoclean -y
 sudo hostnamectl set-hostname master01
 sudo apt install zip unzip git nano vim wget net-tools vim nano htop tree  -y
 
-printf "\n192.168.1.10  k8s-master\n192.168.3.11  k8s-worker1\n192.168.5.12  k8s-worker2\n\n" >> /etc/hosts
+printf "\n192.168.1.10  master01\n192.168.3.11  worker01\n192.168.5.12  worker02\n\n" >> /etc/hosts
 
 ```
 ### Run the below steps on the Worker Nodes 
@@ -83,7 +83,6 @@ sudo systemctl enable --now containerd
 
 systemctl status containerd
 
-
 ```
 ### References
 - https://github.com/containerd/containerd/blob/main/docs/getting-started.md
@@ -94,7 +93,6 @@ systemctl status containerd
 ```
 wget https://github.com/opencontainers/runc/releases/download/v1.1.12/runc.amd64  -P /tmp/
 sudo install -m 755 /tmp/runc.amd64 /usr/local/sbin/runc
-
 
 ```
 ### Install CNI
@@ -140,15 +138,102 @@ sudo crictl images
 
 unix:///var/run/containerd/containerd.sock
 
+```
+
+## Perform bellow Stps on Master and Worker Nodes
+
+
+### Disable SWAP 
+
+```
+swapoff -a
+sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
 ```
 
+### Forwarding IPv4 and letting iptables see bridged traffic
 
+```
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
 
+sudo modprobe overlay
+sudo modprobe br_netfilter
 
+```
 
+### sysctl params required by setup, params persist across reboots
 
+```
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
 
+# Apply sysctl params without reboot
+
+sudo sysctl --system
+
+```
+
+### Verify that the br_netfilter, overlay modules are loaded by running the following commands:
+
+```
+lsmod | grep br_netfilter
+lsmod | grep overlay
+
+sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+
+```
+
+## Install Kubeadm & Kubectl on Master and Worker Nodes
+- Debian-based distributions
+
+### 1- Update the apt package index and install packages needed to use the Kubernetes apt repository:
+
+```
+sudo apt-get update
+# apt-transport-https may be a dummy package; if so, you can skip that package
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+```
+
+### 2- Download the public signing key for the Kubernetes package repositories. The same signing key is used for all repositories so you can disregard the version in the URL:
+
+```
+# If the directory `/etc/apt/keyrings` does not exist, it should be created before the curl command, read the note below.
+# sudo mkdir -p -m 755 /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+```
+
+### 3- Add the appropriate Kubernetes apt repository. Please note that this repository have packages only for Kubernetes 1.30; for other Kubernetes minor versions, you need to change the Kubernetes minor version in the URL to match your desired minor version (you should also check that you are reading the documentation for the version of Kubernetes that you plan to install).
+
+```
+# This overwrites any existing configuration in /etc/apt/sources.list.d/kubernetes.list
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+```
+
+### 4- Update the apt package index, install kubelet, kubeadm and kubectl, and pin their version:
+
+```
+
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+```
+
+### 5- (Optional) Enable the kubelet service before running kubeadm:
+
+```
+sudo systemctl enable --now kubelet
+
+```
 
 ## ArgoCD installation 
 
