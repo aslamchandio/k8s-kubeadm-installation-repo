@@ -1,6 +1,7 @@
 # Setup a Multi Node Kubernetes Cluster Using Kubeadm
 
-![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images/Main_Image.jpeg)
+![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/kubeadm1.jpg)
+![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/kubeadm2.jpg)
 
 ## What this does?
 Using kubeadm, you can create a minimum viable Kubernetes cluster that conforms to best practices. In fact, you can use kubeadm to set up a cluster that will pass the Kubernetes Conformance tests. kubeadm also supports other cluster lifecycle functions, such as bootstrap tokens and cluster upgrades.
@@ -26,6 +27,9 @@ TCP	Inbound	10259	kube-scheduler	Self
 TCP	Inbound	10257	kube-controller-manager	Self
 ```
 
+![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/CP-SG.jpg)
+
+
 ### Worker Security Group
 ```
 
@@ -34,6 +38,7 @@ TCP	Inbound	10256	kube-proxy	Self, Load balancers
 TCP	Inbound	30000-32767	NodePort Services†	All
 ```
 
+![App Screenshot](https://github.com/aslamchandio/random-resources/blob/main/images-3/W-SG.jpg)
 
 ### References
 - https://kubernetes.io/docs/reference/networking/ports-and-protocols/
@@ -155,7 +160,7 @@ unix:///var/run/containerd/containerd.sock
 
 ```
 
-## Perform bellow Stps on Master and Worker Nodes
+## Perform bellow Steps on Master and Worker Nodes
 
 
 ### 1- Disable SWAP 
@@ -260,7 +265,7 @@ sudo kubeadm init --pod-network-cidr "10.244.0.0/16" --service-cidr "10.32.0.0/1
 
 apiserver Ip means Master Node Private IP : 192.168.5.10
 Pod Network Cidr                          : 10.244.0.0/16
-Service Network Cidr                          : 10.32.0.0/16
+Service Network Cidr                      : 10.32.0.0/16
 
 ```
 
@@ -289,7 +294,8 @@ Then you can join any number of worker nodes by running the following on each as
 ```
 
 ### Installing "Calico CNI" or "Weave CNI" (Pod-Network add-on):
-- Calico CNI
+
+#### Calico CNI
 - For Cloud Only (Open TCP/179 BGP Port on controlplane-SG and worker-SG) 
 
 ```
@@ -297,7 +303,6 @@ curl https://raw.githubusercontent.com/projectcalico/calico/v3.28.1/manifests/ca
 
 kubectl apply -f calico.yaml
 kubectl get pods -A
-
 ```
 
 ### References
@@ -305,7 +310,7 @@ kubectl get pods -A
 - https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises#install-calico-with-kubernetes-api-datastore-50-nodes-or-less
 
 
-- Weave CNI
+#### Weave CNI
 - 6783/tcp,6784/udp for Weavenet CNI open these ports  only on Cloud Provider SG & Firewalls
 
 ```
@@ -348,6 +353,22 @@ kubeadm join 192.168.5.10:6443 --token toeu11.54j1jcg3xz4e69iy \
 
 ```
 kubeadm token create --print-join-command 
+
+```
+
+### Validation
+
+- If all the above steps were completed, you should be able to run kubectl get nodes on the master node, and it should return all the 2 or 3 nodes in ready status.
+
+```
+kubectl cluster-info
+kubectl get cs
+
+kubectl get nodes
+kubectl get nodes -o wide
+
+kubectl get pods -A
+kubectl get all -n kube-system
 
 ```
 
