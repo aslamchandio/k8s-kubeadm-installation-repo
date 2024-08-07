@@ -54,7 +54,7 @@ sudo apt update -y
 sudo apt upgrade -y
 sudo apt autoclean -y
 sudo hostnamectl set-hostname master01
-sudo apt install zip unzip git nano vim wget net-tools vim nano htop tree  -y
+sudo apt install zip unzip git nano vim wget net-tools htop  -y
 
 printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
 
@@ -68,7 +68,7 @@ sudo apt autoclean -y
 sudo hostnamectl set-hostname worker01 
 # if you have another worker node 
 sudo hostnamectl set-hostname worker02
-sudo apt install zip unzip git nano vim wget net-tools vim nano htop tree  -y
+sudo apt install zip unzip git nano vim wget net-tools htop  -y
 
 printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
 
