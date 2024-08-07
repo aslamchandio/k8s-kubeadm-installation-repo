@@ -96,8 +96,6 @@ sudo install -m 755 /tmp/runc.amd64 /usr/local/sbin/runc
 
 ```
 ### Install CNI
-- Jenkins plugins:
-- Install the following plugins for the demo.
 ```
 wget  https://github.com/containernetworking/plugins/releases/download/v1.5.0/cni-plugins-linux-amd64-v1.5.0.tgz  -P /tmp/
 sudo mkdir -p /opt/cni/bin
@@ -107,17 +105,32 @@ sudo mkdir -p /etc/containerd
 containerd config default | sudo tee /etc/containerd/config.toml   (Note : manually edit and change systemdCgroup to true)
 cat /etc/containerd/config.toml
 
+```
+
+### Configuring a cgroup driver
+
+Both the container runtime and the kubelet have a property called "cgroup driver", which is important for the management of cgroups on Linux machines.
+
+Warning:
+Matching the container runtime and kubelet cgroup drivers is required or otherwise the kubelet process will fail.
+
+- automatic process
+
+```
 sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
 cat /etc/containerd/config.toml
+```
+
+- manual process
+
+```
 sudo nano /etc/containerd/config.toml
 
 SystemdCgroup = false   change to    SystemdCgroup = true
 
 sudo systemctl restart containerd
 systemctl status containerd
-
 ```
-
 
 ### Install CRICTL
 
@@ -143,7 +156,7 @@ unix:///var/run/containerd/containerd.sock
 ## Perform bellow Stps on Master and Worker Nodes
 
 
-### Disable SWAP 
+### 1- Disable SWAP 
 
 ```
 swapoff -a
@@ -151,7 +164,7 @@ sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
 ```
 
-### Forwarding IPv4 and letting iptables see bridged traffic
+### 2- Forwarding IPv4 and letting iptables see bridged traffic
 
 ```
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -164,7 +177,7 @@ sudo modprobe br_netfilter
 
 ```
 
-### sysctl params required by setup, params persist across reboots
+### 3- sysctl params required by setup, params persist across reboots
 
 ```
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
@@ -179,7 +192,7 @@ sudo sysctl --system
 
 ```
 
-### Verify that the br_netfilter, overlay modules are loaded by running the following commands:
+### 4- Verify that the br_netfilter, overlay modules are loaded by running the following commands:
 
 ```
 lsmod | grep br_netfilter
@@ -234,6 +247,20 @@ sudo apt-mark hold kubelet kubeadm kubectl
 sudo systemctl enable --now kubelet
 
 ```
+
+## Initializing CONTROL-PLANE (Run it on MASTER Node only)
+
+```
+
+sudo kubeadm init --pod-network-cidr "10.244.0.0/16" --service-cidr "10.32.0.0/16" --apiserver-advertise-address=192.168.5.10
+
+```
+
+### Note 
+
+apiserver Ip means Master Node Private IP : 192.168.5.10
+Pod Network Cidr                          : 10.244.0.0/16
+Service Network Cidr                          : 10.32.0.0/16
 
 ## ArgoCD installation 
 
