@@ -14,6 +14,7 @@ A building block in other ecosystem and/or installer tools with a larger scope.
 
 ### References
 - https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
+- https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 
 ## If you are using AWS EC2 , you need to allow specific traffic on specific ports as below
 
@@ -53,24 +54,32 @@ TCP	Inbound	30000-32767	NodePort Services†	All
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt autoclean -y
-sudo hostnamectl set-hostname master01
+sudo hostnamectl set-hostname k8s-master
 sudo apt install zip unzip git nano vim wget net-tools htop  -y
 
-printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
+# run as root
+printf "\n192.168.1.10  k8s-master\n192.168.1.21  k8s-worker01\n192.168.3.22  k8s-worker02\n\n" >> /etc/hosts
+
+cat /etc/hosts
+
 
 ```
 ### Run the below steps on the Worker Nodes 
 - Debian-based distributions
 ```
+#!/bin/bash
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt autoclean -y
-sudo hostnamectl set-hostname worker01 
-# if you have another worker node 
-sudo hostnamectl set-hostname worker02
+sudo hostnamectl set-hostname k8s-worker01
 sudo apt install zip unzip git nano vim wget net-tools htop  -y
+ 
+# run as root
+printf "\n192.168.1.10  k8s-master\n192.168.1.21  k8s-worker01\n192.168.3.22  k8s-worker02\n\n" >> /etc/hosts
+cat /etc/hosts
 
-printf "\n192.168.5.10  master01\n192.168.1.11  worker01\n192.168.3.12  worker02\n\n" >> /etc/hosts
+# For second worker node 
+sudo hostnamectl set-hostname k8s-worker02
 
 ```
 
@@ -84,6 +93,7 @@ sudo tar Cxzvf /usr/local containerd-1.7.20-linux-amd64.tar.gz
 
 sudo wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service -P /etc/systemd/system/
 ls -al /etc/systemd/system/
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now containerd
 
@@ -92,6 +102,7 @@ systemctl status containerd
 ```
 ### References
 - https://github.com/containerd/containerd/blob/main/docs/getting-started.md
+- https://github.com/kubernetes-sigs/cri-tools/blob/master/docs/crictl.md
 
 ### Install Runc
 
@@ -105,9 +116,12 @@ wget  https://github.com/containernetworking/plugins/releases/download/v1.5.0/cn
 sudo mkdir -p /opt/cni/bin
 sudo tar Cxzvf /opt/cni/bin /tmp/cni-plugins-linux-amd64-v1.5.0.tgz
 
+# For  systemd cgroup driver
 sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml   
+containerd config default | sudo tee /etc/containerd/config.toml 
+
 cat /etc/containerd/config.toml
+cat /etc/containerd/config.toml | grep SystemdCgroup
 
 Notice  SystemdCgroup = false 
 
@@ -126,7 +140,13 @@ SystemdCgroup = false   change to    SystemdCgroup = true
 
 ```
 sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
-cat /etc/containerd/config.toml
+
+cat /etc/containerd/config.toml | grep SystemdCgroup
+Notice  SystemdCgroup = true
+
+sudo systemctl restart containerd
+systemctl status containerd
+
 ```
 
 - manual process
@@ -138,6 +158,7 @@ SystemdCgroup = false   change to    SystemdCgroup = true
 
 sudo systemctl restart containerd
 systemctl status containerd
+
 ```
 
 ### Install CRICTL
@@ -154,7 +175,7 @@ debug: false
 pull-image-on-create: false
 EOF
 
-sudo crictl pull aslam24/nginx-web-oxer:v1
+sudo crictl pull aslam24/nginx-web-restoran:v1
 sudo crictl images
 
 unix:///var/run/containerd/containerd.sock
@@ -169,6 +190,8 @@ unix:///var/run/containerd/containerd.sock
 ```
 swapoff -a
 sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+
+free -m
 
 ```
 
@@ -253,6 +276,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 
 ```
 sudo systemctl enable --now kubelet
+systemctl status kubelet
 
 ```
 
@@ -260,11 +284,11 @@ sudo systemctl enable --now kubelet
 
 ```
 
-sudo kubeadm init --pod-network-cidr "10.244.0.0/16" --service-cidr "10.32.0.0/16" --apiserver-advertise-address=192.168.5.10
+sudo kubeadm init --pod-network-cidr "10.244.0.0/16" --service-cidr "10.32.0.0/16" --apiserver-advertise-address=192.168.1.10
 
 ## Note
 
-apiserver Ip means Master Node Private IP : 192.168.5.10
+apiserver Ip means Master Node Private IP : 192.168.1.10
 Pod Network Cidr                          : 10.244.0.0/16
 Service Network Cidr                      : 10.32.0.0/16
 
@@ -291,7 +315,10 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
   https://kubernetes.io/docs/concepts/cluster-administration/addons/
 
 Then you can join any number of worker nodes by running the following on each as root:
-                      
+
+sudo kubeadm join 192.168.5.10:6443 --token toeu11.54j1jcg3xz4e69iy \
+        --discovery-token-ca-cert-hash sha256:392b358bc5ce90dd259b8cdda6679fe689b2d2013072d46d8a24d2fa231ccfd9
+
 ```
 
 ### References
@@ -349,7 +376,7 @@ kubectl get pods -A
 ### Join worker Nodes (run only on worker nodes)
 
 ```
-kubeadm join 192.168.5.10:6443 --token toeu11.54j1jcg3xz4e69iy \
+sudo kubeadm join 192.168.5.10:6443 --token toeu11.54j1jcg3xz4e69iy \
         --discovery-token-ca-cert-hash sha256:392b358bc5ce90dd259b8cdda6679fe689b2d2013072d46d8a24d2fa231ccfd9
 ```
 
@@ -380,8 +407,7 @@ kubectl get all -n kube-system
 
 ```
 sudo wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubecolor_0.0.25_Linux_x86_64.tar.gz
-
-  sudo tar zxv -f kubecolor_0.0.25_Linux_x86_64.tar.gz
+sudo tar zxv -f kubecolor_0.0.25_Linux_x86_64.tar.gz
 
  ./kubecolor get pods
   ./kubecolor get pods -A
@@ -391,8 +417,15 @@ sudo wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubeco
   ./kubecolor get all -n kube-system
   ./kubecolor
 
+echo "alias k=/home/ubuntu/" >> ~/.bashrc
+echo "alias k=/home/ubuntu/kubecolor" >> ~/.bashrc
+
 alias k=/home/ubuntu/
 alias k=/home/ubuntu/kubecolor
+
+sudo apt install kubectx
+
+
 
 ```
 
