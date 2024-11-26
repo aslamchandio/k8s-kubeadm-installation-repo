@@ -51,6 +51,7 @@ TCP	Inbound	30000-32767	NodePort Services†	All
 ### Run the below steps on the Master Node
 - Debian-based distributions
 ```
+#!/bin/bash
 sudo apt update -y
 sudo apt upgrade -y
 sudo apt autoclean -y
@@ -450,15 +451,102 @@ k get all -n kube-system
 
 ```
 
+## Accessing your cluster from Admin VM (Amazon Linux 2023)
+
+- Install Kubectl
+
+```
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.2/2024-11-15/bin/linux/amd64/kubectl
+
+sha256sum -c kubectl.sha256
+
+chmod +x ./kubectl
+
+mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
 
 
+```
+
+- Install Kubecolor
+
+```
+sudo wget https://github.com/hidetatz/kubecolor/releases/download/v0.0.25/kubecolor_0.0.25_Linux_x86_64.tar.gz
+sudo tar zxv -f kubecolor_0.0.25_Linux_x86_64.tar.gz
+
+ ./kubecolor get pods
+  ./kubecolor get pods -A
+  ./kubecolor get nodes
+  ./kubecolor get nodes -o wide
+  ./kubecolor get all
+  ./kubecolor get all -n kube-system
+  ./kubecolor
+
+echo "alias k=/home/ec2-user/" >> ~/.bashrc
+echo "alias k=/home/ec2-user/kubecolor" >> ~/.bashrc
+
+alias k=/home/ec2-user/
+alias k=/home/ec2-user/kubecolor
+
+sudo apt install kubectx
 
 
+```
+
+So far, we are able to talk to our Kubernetes cluster from node1, as user student. It is because that is where we have configured our .kube/config which is used by kubectl commands. To be able to access the cluster from some other computer, such as your work computer, etc, you need to copy the administrator kubeconfig file from your master node to your computer like this:
 
 
+```
+scp ubuntu@master01:/home/ubuntu/.kube/config  ~/.kube/kubeadm-cluster.conf
+
+kubectl get pods -A --kubeconfig=$HOME/.kube/kubeadm-cluster.conf
+kubectl get all -n kube-system --kubeconfig=$HOME/.kube/kubeadm-cluster.conf
+kubectl get nodes --kubeconfig=$HOME/.kube/kubeadm-cluster.conf
 
 
+kubectl config get-contexts
+kubectl config get-clusters
+kubectl config view
+kubectl config --minify=true
 
+```
+
+I have verified that without using --kubeconfig with kubectl, I can access my previous clusters. By using a specific configuration with --kubeconfig , I can access my kubeadm cluster.
+
+So, is it possible to merge these two configurations? No. Not directly, which is actually a safety feature. Check this article for more detail: https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/#set-the-kubeconfig-environment-variable .
+
+I will solve it by using the KUBECONFIG environment variable as described in the above link. Here is how:
+
+
+```
+
+export KUBECONFIG=$KUBECONFIG:$HOME/.kube/config:$HOME/.kube/kubeadm-cluster.conf
+
+echo $KUBECONFIG
+
+kubectl config get-contexts
+kubectl config get-clusters
+kubectl config view
+kubectl config --minify=true
+
+
+kubectl get pods -A 
+kubectl get all -n kube-system 
+kubectl get nodes 
+
+```
+
+Now, I just need to setup this KUBECONFIG permanently in my .bash_profile file so I don't have to do this every time I login to my computer. Depending on your situation and the way you start your session on your work computer, you may want to add this to any/all of:
+
+
+```
+
+vim ~/.bashrc
+
+export KUBECONFIG=$KUBECONFIG:$HOME/.kube/config:$HOME/.kube/kubeadm-cluster.conf
+
+export PATH KUBECONFIG
+
+```
 
 
 
